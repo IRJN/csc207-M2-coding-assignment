@@ -30,6 +30,38 @@ public class DogApiBreedFetcher implements BreedFetcher {
         //      to refer to the examples of using OkHttpClient from the last lab,
         //      as well as the code for parsing JSON responses.
         // return statement included so that the starter code can compile and run.
-        return new ArrayList<>();
+        String url = String.format("https://dog.ceo/api/breed/%s/list", breed.toLowerCase());
+        Request request = new Request.Builder().url(url).build();
+
+        try (Response response = client.newCall(request).execute()) {
+
+            if (!response.isSuccessful() || response.body() == null) {
+                // Throws unchecked exception
+                throw new BreedFetcher.BreedNotFoundException("API call failed: HTTP " + response.code());
+            }
+
+            String jsonData = response.body().string();
+            JSONObject json = new JSONObject(jsonData);
+
+            String status = json.getString("status");
+            if (!"success".equalsIgnoreCase(status)) {
+                // Throws unchecked exception
+                String message = json.optString("message", "Breed not found or unknown API error.");
+                throw new BreedFetcher.BreedNotFoundException(message);
+            }
+
+            JSONArray subBreedsJson = json.getJSONArray("message");
+            List<String> subBreeds = new ArrayList<>();
+
+            for (int i = 0; i < subBreedsJson.length(); i++) {
+                subBreeds.add(subBreedsJson.getString(i));
+            }
+
+            return subBreeds;
+
+        } catch (IOException | org.json.JSONException e) {
+            // Catches network/parsing errors and throws unchecked exception
+            throw new BreedFetcher.BreedNotFoundException("Error during API call: " + e.getMessage());
+        }
     }
 }
